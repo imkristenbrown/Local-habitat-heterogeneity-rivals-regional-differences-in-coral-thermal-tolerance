@@ -1,0 +1,1378 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(Rmisc)
+library(lubridate)
+library(ggplot2)
+library(car)
+library(MASS)
+library(mgcv)
+library(MuMIn)
+library(emmeans)
+library(ggrepel)
+library(effects)
+library(lme4)
+library(nlme)
+library(sjPlot)
+library(drc)
+library(scales)
+```
+
+#STHS temperature data
+```{r}
+amb<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/AMB_correct format.csv")
+amb$Date<-as.Date(amb$Date)
+#amb$Time<-as.POSIXct((amb$Time), format="hh:mm:ss")
+amb$Treatment<-"amb"
+amb$Treatment<-as.factor(amb$Treatment)
+amb$Date_Time<- as.POSIXct(paste(amb$Date, amb$Time), "%Y-%m-%d hh:mm:ss")
+amb$hour <- as.POSIXlt(amb$Date_Time)$hour
+amb$day <- day(as.POSIXlt(amb$Date_Time))
+amb
+```
+```{r}
+amb_new<-amb%>%
+    mutate(Site= ifelse(day %in% c(27) & hour %in% c(13,14,15,16,17,18,19,20,21,22,23), "SL",
+                          ifelse(day %in% c(28) & hour %in% c(0,1,2,3,4,5,6,7), "SL",
+                                 ifelse(day %in% c(28) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "SL",
+                          ifelse(day %in% c(29) & hour %in% c(0,1,2,3,4,5,6,7), "SL",
+                                 ifelse(day %in% c(29) & hour %in% c(13,14,15,16,17,18,19,20,21,22,23), "DL",
+                          ifelse(day %in% c(30) & hour %in% c(0,1,2,3,4,5,6,7), "DL",
+                                 ifelse(day %in% c(30) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "DL",
+                          ifelse(day %in% c(1) & hour %in% c(0,1,2,3,4,5,6,7), "DL", 
+                                 ifelse(day %in% c(1) & hour %in% c(13,14,15,16,17,18,19,20,21,22,23), "RF",
+                          ifelse(day %in% c(2) & hour %in% c(0,1,2,3,4,5,6,7), "RF",
+                                 ifelse(day %in% c(2) & hour %in% c(13,14,15,16,17,18,19,20,21,22,23), "RF",
+                          ifelse(day %in% c(3) & hour %in% c(0,1,2,3,4,5,6,7), "RF",
+                                 ifelse(day %in% c(3) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "RC",
+                          ifelse(day %in% c(4) & hour %in% c(0,1,2,3,4,5,6,7), "RC",
+                                 ifelse(day %in% c(4) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "RC",
+                          ifelse(day %in% c(5) & hour %in% c(0,1,2,3,4,5,6,7), "RC",
+                                 ifelse(day %in% c(5) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "FP",
+                          ifelse(day %in% c(6) & hour %in% c(0,1,2,3,4,5,6,7), "FP",
+                                 ifelse(day %in% c(6) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "FP",
+                          ifelse(day %in% c(7) & hour %in% c(0,1,2,3,4,5,6,7), "FP",
+                                  ifelse(day %in% c(7) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "HB",
+                          ifelse(day %in% c(8) & hour %in% c(0,1,2,3,4,5,6,7), "HB",
+                                 ifelse(day %in% c(8) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "HB",
+                          ifelse(day %in% c(9) & hour %in% c(0,1,2,3,4,5,6,7), "HB",NA)))))))))))))))))))))))))
+amb_new
+```
+
+
+```{r}
+amb_mean<-summarySE(amb, measurevar='Temperature', groupvars=c("Date","hour", 'Treatment'), na.rm=TRUE, conf.interval = 0.95)
+amb_mean
+```
+```{r}
+amb_mean2<-summarySE(amb, measurevar='Temperature', groupvars=c("hour",'Treatment'), na.rm=TRUE, conf.interval = 0.95)
+amb_mean2
+```
+
+```{r}
+amb_mean3<-summarySE(amb, measurevar='Temperature', groupvars=c('Treatment'), na.rm=TRUE, conf.interval = 0.95)
+amb_mean3
+```
+###Figure - time of day
+```{r}
+#lims <- as.POSIXct(strptime(c("2022-09-04 00:00", "2022-09-05 0:00"), format = "%Y-%m-%d %H:%M"))
+amb$Date<- as.Date(as.POSIXct(amb$Date, origin="1970-01-01"))
+STHS_hobo_temp<-ggplot(amb_mean, aes(y=Temperature, x=hour, color=Date, fill=Date))+
+  geom_point(size=1)+
+  geom_line(aes(group = interaction(Date), stat="identity"))+
+  geom_ribbon(aes(ymin=Temperature-se, ymax=Temperature+se,group = interaction(Date), stat="identity"), alpha=0.4)+
+  #geom_hline(yintercept = 27.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #geom_hline(yintercept = 28.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #scale_x_discrete(expression(Time), breaks=c("0:00:00","6:00:00","12:00:00","18:00:00"))+
+  scale_x_continuous(expression(Time~of~day))+
+  scale_y_continuous(expression(Temperature~(degree~C)))+
+  #scale_color_brewer(palette ="RdBu", direction =-1)+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5,size=12),#angling the labels on the x-axis
+        plot.title = element_text(margin = margin(t = 10, b = 10), hjust=0.5),#telling it where to position our plot title
+        panel.background= element_rect(fill=NA, color='black'),#this is making the black box around the graph
+        strip.background = element_blank(), 
+        #strip.text = element_blank(),
+        legend.title = element_text(),
+        #legend.position=c(0.89,0.80),
+        axis.text.y = element_text(vjust=0.5, size=12), #making the axis text larger 
+        axis.title.x = element_text(vjust=0.5, size=12),#making the axis title larger 
+        axis.title.y = element_text(size=12))#making the axis title larger 
+STHS_hobo_temp
+```
+
+```{r}
+STHS_hobo_temp<-ggplot(amb_mean, aes(y=Temperature, x=hour, color=Date, fill=Date))+
+  #geom_point(size=1)+
+  geom_line(aes(group = interaction(Date), stat="identity"))+
+  #geom_line(data=amb_mean2, aes(y=Temperature, x=hour),color="black",fill="black",size=1)+
+  #\geom_ribbon(aes(ymin=Temperature-se, ymax=Temperature+se,group = interaction(Date), stat="identity"), alpha=0.4)+
+  #geom_hline(yintercept = 27.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #geom_hline(yintercept = 28.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #scale_x_discrete(expression(Time), breaks=c("0:00:00","6:00:00","12:00:00","18:00:00"))+
+  scale_x_continuous(expression(Time~of~day))+
+  scale_y_continuous(expression(Temperature~(degree~C)))+
+  #scale_color_distiller(palette ="Blues", direction =-1)+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5,size=12),#angling the labels on the x-axis
+        plot.title = element_text(margin = margin(t = 10, b = 10), hjust=0.5),#telling it where to position our plot title
+        panel.background= element_rect(fill=NA, color='black'),#this is making the black box around the graph
+        strip.background = element_blank(), 
+        #strip.text = element_blank(),
+        legend.title = element_text(),
+        #legend.position=c(0.89,0.80),
+        axis.text.y = element_text(vjust=0.5, size=12), #making the axis text larger 
+        axis.title.x = element_text(vjust=0.5, size=12),#making the axis title larger 
+        axis.title.y = element_text(size=12))#making the axis title larger 
+STHS_hobo_temp
+```
+###Figure - by hour
+```{r}
+STHS_hobo_temp2<-ggplot(amb_mean2, aes(y=Temperature, x=hour))+
+  #geom_point(size=1)+
+  geom_line()+
+  #geom_line(data=amb_mean2, aes(y=Temperature, x=hour),color="black",fill="black",size=1)+
+  geom_ribbon(aes(ymin=Temperature-se, ymax=Temperature+se), alpha=0.4)+
+  #geom_hline(yintercept = 27.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #geom_hline(yintercept = 28.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #scale_x_discrete(expression(Time), breaks=c("0:00:00","6:00:00","12:00:00","18:00:00"))+
+  #scale_x_continuous(expression(Time~of~day))+
+  scale_y_continuous(expression(Temperature~(degree~C)))+
+  #scale_color_distiller(palette ="Blues", direction =-1)+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5,size=12),#angling the labels on the x-axis
+        plot.title = element_text(margin = margin(t = 10, b = 10), hjust=0.5),#telling it where to position our plot title
+        panel.background= element_rect(fill=NA, color='black'),#this is making the black box around the graph
+        strip.background = element_blank(), 
+        #strip.text = element_blank(),
+        legend.title = element_text(),
+        #legend.position=c(0.89,0.80),
+        axis.text.y = element_text(vjust=0.5, size=12), #making the axis text larger 
+        axis.title.x = element_text(vjust=0.5, size=12),#making the axis title larger 
+        axis.title.y = element_text(size=12))#making the axis title larger 
+STHS_hobo_temp2
+```
+```{r}
+t2<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/STHS temperature1.csv")
+t2$Date<-as.Date(t2$Date)
+#t2$Time<-as.POSIXct((t2$Time), format="hh:mm:ss")
+#t2$Treatment<-"t2"
+#t2$Treatment<-as.factor(t2$Treatment)
+t2$Date_Time<- as.POSIXct(paste(t2$Date, t2$Time), "%Y-%m-%d hh:mm:ss")
+t2$hour <- as.POSIXlt(t2$Date_Time)$hour
+t2$day <- day(as.POSIXlt(t2$Date_Time))
+t2
+```
+```{r}
+unique(t2$hour)
+```
+```{r}
+t2_peak<-filter(t2, hour == "16")
+t2_peak
+```
+```{r}
+t2_peak_mean<-summarySE(t2_peak, measurevar='Temperature', groupvars=c("Date"), na.rm=TRUE, conf.interval = 0.95)
+t2_peak_mean
+```
+
+```{r}
+t2_mean<-summarySE(t2, measurevar='Temperature', groupvars=c("Date","hour"), na.rm=TRUE, conf.interval = 0.95)
+t2_mean
+```
+
+
+```{r}
+#lims <- as.POSIXct(strptime(c("2022-09-04 00:00", "2022-09-05 0:00"), format = "%Y-%m-%d %H:%M"))
+t2$Date<- as.Date(as.POSIXct(t2$Date, origin="1970-01-01"))
+STHS_hobo_temp_2<-ggplot(t2_peak_mean, aes(y=Temperature, x=Date))+
+  geom_point(size=1)+
+  #geom_line(aes(group = interaction(Date), stat="identity"))+
+  #geom_ribbon(aes(ymin=Temperature-se, ymax=Temperature+se,group = interaction(Date), stat="identity"), alpha=0.4)+
+  #geom_hline(yintercept = 27.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #geom_hline(yintercept = 28.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #scale_x_discrete(expression(Time), breaks=c("0:00:00","6:00:00","12:00:00","18:00:00"))+
+  scale_x_date(date_breaks= "2 day",date_labels = "%b %d")+
+  scale_y_continuous(expression(Temperature~(degree~C)))+
+  #scale_color_brewer(palette ="RdBu", direction =-1)+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5,size=12),#angling the labels on the x-axis
+        plot.title = element_text(margin = margin(t = 10, b = 10), hjust=0.5),#telling it where to position our plot title
+        panel.background= element_rect(fill=NA, color='black'),#this is making the black box around the graph
+        strip.background = element_blank(), 
+        #strip.text = element_blank(),
+        legend.title = element_text(),
+        #legend.position=c(0.89,0.80),
+        axis.text.y = element_text(vjust=0.5, size=12), #making the axis text larger 
+        axis.title.x = element_text(vjust=0.5, size=12),#making the axis title larger 
+        axis.title.y = element_text(size=12))#making the axis title larger 
+STHS_hobo_temp_2
+```
+
+```{r}
+t2_peak_mean<-summarySE(t2_peak, measurevar='Temperature', groupvars=c("Date"), na.rm=TRUE, conf.interval = 0.95)
+t2_peak_mean
+```
+
+```{r}
+t2_new<-t2%>%
+    mutate(Site_Treat= ifelse(day %in% c(27) & hour %in% c(13,14,15,16,17,18,19,20,21,22,23), "SL_T4",
+                          ifelse(day %in% c(28) & hour %in% c(0,1,2,3,4,5,6,7), "SL_T4",
+                                 ifelse(day %in% c(28) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "SL_T3",
+                          ifelse(day %in% c(29) & hour %in% c(0,1,2,3,4,5,6,7), "SL_T3",
+                                 ifelse(day %in% c(29) & hour %in% c(13,14,15,16,17,18,19,20,21,22,23), "DL_T2",
+                          ifelse(day %in% c(30) & hour %in% c(0,1,2,3,4,5,6,7), "DL_T2",
+                                 ifelse(day %in% c(30) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "DL_T3",
+                          ifelse(day %in% c(1) & hour %in% c(0,1,2,3,4,5,6,7), "DL_T3", 
+                                 ifelse(day %in% c(1) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "RF_T4",
+                          ifelse(day %in% c(2) & hour %in% c(0,1,2,3,4,5,6,7), "RF_T4",
+                                 ifelse(day %in% c(2) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "RF_T1",
+                          ifelse(day %in% c(3) & hour %in% c(0,1,2,3,4,5,6,7), "RF_T1",
+                                 ifelse(day %in% c(3) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "RC_T1",
+                          ifelse(day %in% c(4) & hour %in% c(0,1,2,3,4,5,6,7), "RC_T1",
+                                 ifelse(day %in% c(4) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "RC_T4",
+                          ifelse(day %in% c(5) & hour %in% c(0,1,2,3,4,5,6,7), "RC_T4",
+                                 ifelse(day %in% c(5) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "FP_T2",
+                          ifelse(day %in% c(6) & hour %in% c(0,1,2,3,4,5,6,7), "FP_T2",
+                                 ifelse(day %in% c(6) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "FP_T4",
+                          ifelse(day %in% c(7) & hour %in% c(0,1,2,3,4,5,6,7), "FP_T4",
+                                  ifelse(day %in% c(7) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "HB_T4",
+                          ifelse(day %in% c(8) & hour %in% c(0,1,2,3,4,5,6,7), "HB_T4",NA)))))))))))))))))))))))
+t2_new
+```
+```{r}
+unique(t2_new$Site_Treat)
+```
+
+```{r}
+t3<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/STHS temperature2.csv")
+t3$Date<-as.Date(t3$Date)
+#t3$Time<-as.POSIXct((t3$Time), format="hh:mm:ss")
+#t3$Treatment<-"t3"
+#t3$Treatment<-as.factor(t3$Treatment)
+t3$Date_Time<- as.POSIXct(paste(t3$Date, t3$Time), "%Y-%m-%d hh:mm:ss")
+t3$hour <- as.POSIXlt(t3$Date_Time)$hour
+t3$day <- day(as.POSIXlt(t3$Date_Time))
+t3
+```
+
+```{r}
+t3_peak<-filter(t3, hour == "16")
+t3_peak
+```
+```{r}
+t3_peak_mean<-summarySE(t3_peak, measurevar='Temperature', groupvars=c("Date"), na.rm=TRUE, conf.interval = 0.95)
+t3_peak_mean
+```
+
+```{r}
+t3_mean<-summarySE(t3, measurevar='Temperature', groupvars=c("Date","hour"), na.rm=TRUE, conf.interval = 0.95)
+t3_mean
+```
+
+
+```{r}
+#lims <- as.POSIXct(strptime(c("2022-09-04 00:00", "2022-09-05 0:00"), format = "%Y-%m-%d %H:%M"))
+t3$Date<- as.Date(as.POSIXct(t3$Date, origin="1970-01-01"))
+STHS_hobo_temp_2<-ggplot(t3_peak_mean, aes(y=Temperature, x=Date))+
+  geom_point(size=1)+
+  #geom_line(aes(group = interaction(Date), stat="identity"))+
+  #geom_ribbon(aes(ymin=Temperature-se, ymax=Temperature+se,group = interaction(Date), stat="identity"), alpha=0.4)+
+  #geom_hline(yintercept = 27.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #geom_hline(yintercept = 28.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #scale_x_discrete(expression(Time), breaks=c("0:00:00","6:00:00","12:00:00","18:00:00"))+
+  scale_x_date(date_breaks= "2 day",date_labels = "%b %d")+
+  scale_y_continuous(expression(Temperature~(degree~C)))+
+  #scale_color_brewer(palette ="RdBu", direction =-1)+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5,size=12),#angling the labels on the x-axis
+        plot.title = element_text(margin = margin(t = 10, b = 10), hjust=0.5),#telling it where to position our plot title
+        panel.background= element_rect(fill=NA, color='black'),#this is making the black box around the graph
+        strip.background = element_blank(), 
+        #strip.text = element_blank(),
+        legend.title = element_text(),
+        #legend.position=c(0.89,0.80),
+        axis.text.y = element_text(vjust=0.5, size=12), #making the axis text larger 
+        axis.title.x = element_text(vjust=0.5, size=12),#making the axis title larger 
+        axis.title.y = element_text(size=12))#making the axis title larger 
+STHS_hobo_temp_2
+```
+
+```{r}
+t3_peak_mean<-summarySE(t3_peak, measurevar='Temperature', groupvars=c("Date"), na.rm=TRUE, conf.interval = 0.95)
+t3_peak_mean
+```
+
+```{r}
+t3_new<-t3%>%
+    mutate(Site_Treat= ifelse(day %in% c(26) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "HB_T3",
+                          ifelse(day %in% c(27) & hour %in% c(0,1,2,3,4,5,6,7), "HB_T3",
+                                 ifelse(day %in% c(27) & hour %in% c(13,14,15,16,17,18,19,20,21,22,23), "SL_T2",
+                          ifelse(day %in% c(28) & hour %in% c(0,1,2,3,4,5,6,7), "SL_T2",
+                                 ifelse(day %in% c(28) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "SL_T1",
+                          ifelse(day %in% c(29) & hour %in% c(0,1,2,3,4,5,6,7), "SL_T1",
+                                 ifelse(day %in% c(29) & hour %in% c(13,14,15,16,17,18,19,20,21,22,23), "DL_T1",
+                          ifelse(day %in% c(30) & hour %in% c(0,1,2,3,4,5,6,7), "DL_T1",
+                                 ifelse(day %in% c(30) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "DL_T4",
+                          ifelse(day %in% c(1) & hour %in% c(0,1,2,3,4,5,6,7), "DL_T4", 
+                                 ifelse(day %in% c(1) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "RF_T3",
+                          ifelse(day %in% c(2) & hour %in% c(0,1,2,3,4,5,6,7), "RF_T3",
+                                 ifelse(day %in% c(2) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "RF_T2",
+                          ifelse(day %in% c(3) & hour %in% c(0,1,2,3,4,5,6,7), "RF_T2",
+                                 ifelse(day %in% c(3) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "RC_T2",
+                          ifelse(day %in% c(4) & hour %in% c(0,1,2,3,4,5,6,7), "RC_T2",
+                                 ifelse(day %in% c(4) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "RC_T3",
+                          ifelse(day %in% c(5) & hour %in% c(0,1,2,3,4,5,6,7), "RC_T3",
+                                 ifelse(day %in% c(5) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "FP_T1",
+                          ifelse(day %in% c(6) & hour %in% c(0,1,2,3,4,5,6,7), "FP_T1",
+                                 ifelse(day %in% c(6) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "FP_T3",
+                          ifelse(day %in% c(7) & hour %in% c(0,1,2,3,4,5,6,7), "FP_T3",
+                                  ifelse(day %in% c(7) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "HB_T2",
+                          ifelse(day %in% c(8) & hour %in% c(0,1,2,3,4,5,6,7), "HB_T2",
+                                 ifelse(day %in% c(8) & hour %in% c(12,13,14,15,16,17,18,19,20,21,22,23), "HB_T1",
+                          ifelse(day %in% c(9) & hour %in% c(0,1,2,3,4,5,6,7), "HB_T1",NA)))))))))))))))))))))))))))
+t3_new
+```
+```{r}
+colnames(t3_new)
+```
+
+
+```{r}
+t_all<- merge(t2_new, t3_new, by=c("Date","Time","Temperature","Date_Time","hour","day","Site_Treat"), all=T)
+t_all<-filter(t_all, Site_Treat == "HB_T3")
+t_all
+```
+```{r}
+HB3_temp_mean2<-summarySE(t_all, measurevar='Temperature', groupvars=c('hour'), na.rm=TRUE, conf.interval = 0.95)
+HB3_temp_mean2
+```
+
+
+```{r}
+#all_temp_mean$Treatment<- factor(all_temp_mean$Treatment, levels =c("amb","T1","T2","T3", "T4"))
+HB3_temp_mean2$hour <- factor(HB3_temp_mean2$hour, levels=c("12","13","14","15","16","17","18","19","20","21","22","23","0", "1","2","3","4","5","6","7"))
+#all_temp_mean$Site<- factor(all_temp_mean$Site, levels =c("RF","RC","SL","DL", "FP", "HB"))
+HB_T3_STHS<-ggplot(HB3_temp_mean2, aes(y=Temperature, x=hour,group = 1))+
+  #geom_point(size=1)+
+  geom_path()+
+  #facet_wrap(~Site)+
+  #geom_line(data=amb_mean2, aes(y=Temperature, x=hour),color="black",fill="black",size=1)+
+  geom_ribbon(aes(ymin=Temperature-se, ymax=Temperature+se), alpha=0.4)+
+  #geom_hline(yintercept = 27.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #geom_hline(yintercept = 28.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #scale_x_discrete(expression(Time), breaks=c("0:00:00","6:00:00","12:00:00","18:00:00"))+
+  #scale_x_continuous(expression(Time~of~day))+
+  scale_y_continuous(expression(Temperature~(degree~C)), breaks=c(22,24,26,28,30,32,34,36), limits=c(22,36))+
+  #scale_color_brewer(palette ="Greys")+
+  #scale_fill_brewer(palette ="Greys")+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5,size=12),#angling the labels on the x-axis
+        plot.title = element_text(margin = margin(t = 10, b = 10), hjust=0.5),#telling it where to position our plot title
+        panel.background= element_rect(fill=NA, color='black'),#this is making the black box around the graph
+        strip.background = element_blank(), 
+        #strip.text = element_blank(),
+        legend.title = element_text(),
+        #legend.position=c(0.89,0.80),
+        axis.text.y = element_text(vjust=0.5, size=12), #making the axis text larger 
+        axis.title.x = element_text(vjust=0.5, size=12),#making the axis title larger 
+        axis.title.y = element_text(size=12))#making the axis title larger 
+HB_T3_STHS
+```
+```{r}
+write.csv(t_all, "treatment temperature STHS.csv")
+```
+
+
+```{r}
+all_temp<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/treatment temperature STHS_revised2.csv")
+all_temp$Date<-as.Date(all_temp$Date)
+#all_temp$Time<-as.POSIXct((all_temp$Time), format="hh:mm:ss")
+#all_temp$Treatment<-"all_temp"
+all_temp$Treatment<-as.factor(all_temp$Treatment)
+all_temp$Site<-as.factor(all_temp$Site)
+all_temp
+```
+```{r}
+colnames(all_temp)
+all_temp <- subset(all_temp, select = -c(X))
+all_temp
+```
+
+```{r}
+all_temp<- merge(all_temp, amb_new, by=c("Date","Time","Temperature","Date_Time","hour","day","Site", "Treatment"), all=T)
+all_temp
+```
+
+
+```{r}
+all_temp<-na.omit(all_temp)
+all_temp
+```
+```{r}
+all_temp_mean<-summarySE(all_temp, measurevar='Temperature', groupvars=c("hour","Site", 'Treatment'), na.rm=TRUE, conf.interval = 0.95)
+all_temp_mean$hour<-as.factor(all_temp_mean$hour)
+all_temp_mean
+```
+
+```{r}
+all_temp_mean2<-summarySE(all_temp, measurevar='Temperature', groupvars=c('Treatment'), na.rm=TRUE, conf.interval = 0.95)
+all_temp_mean2
+```
+
+
+```{r}
+all_temp_mean_treat<-summarySE(all_temp, measurevar='Temperature', groupvars=c("hour", 'Treatment'), na.rm=TRUE, conf.interval = 0.95)
+all_temp_mean_treat$hour<-as.factor(all_temp_mean_treat$hour)
+all_temp_mean_treat
+```
+
+```{r}
+sths.lm<- lm(Temperature~Site*Treatment, data=all_temp_mean) #Gaussian
+Anova(sths.lm)
+tukey3<- emmeans(sths.lm, list(pairwise ~ Treatment), adjust = "tukey")
+tukey3
+par(mfrow=c(2,3))
+plot(sths.lm, ask=FALSE, which=1:6)
+```
+
+
+###Figure - temperature profiles by site
+```{r}
+all_temp_mean$Treatment<- factor(all_temp_mean$Treatment, levels =c("amb","T1","T2","T3", "T4"))
+all_temp_mean$hour <- factor(all_temp_mean$hour, levels=c("12","13","14","15","16","17","18","19","20","21","22","23","0", "1","2","3","4","5","6","7"))
+all_temp_mean$Site<- factor(all_temp_mean$Site, levels =c("RF","RC","SL","DL", "FP", "HB"))
+all_STHS<-ggplot(all_temp_mean, aes(y=Temperature, x=hour, color=Treatment, fill=Treatment))+
+  #geom_point(size=1)+
+  geom_line(aes(group = interaction(Site, Treatment), stat="identity"))+
+  facet_wrap(~Site)+
+  #geom_line(data=amb_mean2, aes(y=Temperature, x=hour),color="black",fill="black",size=1)+
+  geom_ribbon(aes(ymin=Temperature-se, ymax=Temperature+se), alpha=0.4)+
+  #geom_hline(yintercept = 27.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #geom_hline(yintercept = 28.7, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #scale_x_discrete(expression(Time), breaks=c("0:00:00","6:00:00","12:00:00","18:00:00"))+
+  #scale_x_continuous(expression(Time~of~day))+
+  scale_y_continuous(expression(Temperature~(degree~C)), breaks=c(22,24,26,28,30,32,34,36))+
+  scale_color_brewer(palette ="Greys")+
+  scale_fill_brewer(palette ="Greys")+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5,size=12),#angling the labels on the x-axis
+        plot.title = element_text(margin = margin(t = 10, b = 10), hjust=0.5),#telling it where to position our plot title
+        panel.background= element_rect(fill=NA, color='black'),#this is making the black box around the graph
+        strip.background = element_blank(), 
+        #strip.text = element_blank(),
+        legend.title = element_text(),
+        #legend.position=c(0.89,0.80),
+        axis.text.y = element_text(vjust=0.5, size=12), #making the axis text larger 
+        axis.title.x = element_text(vjust=0.5, size=12),#making the axis title larger 
+        axis.title.y = element_text(size=12))#making the axis title larger 
+all_STHS
+```
+###Figure - all temperature profiles 
+```{r}
+all_temp_mean_treat$Treatment<- factor(all_temp_mean_treat$Treatment, levels =c("amb","T1","T2","T3", "T4"))
+all_temp_mean_treat$hour <- factor(all_temp_mean_treat$hour, levels=c("12","13","14","15","16","17","18","19","20","21","22","23","0", "1","2","3","4","5","6","7"))
+#all_temp_mean_treat$Site<- factor(all_temp_mean_treat$Site, levels =c("RF","RC","SL","DL", "FP", "HB"))
+all_STHS<-ggplot(all_temp_mean_treat, aes(y=Temperature, x=hour, color=Treatment, fill=Treatment))+
+  #geom_point(size=1)+
+  geom_line(aes(group = interaction(Treatment), stat="identity"), size=1)+
+  #facet_wrap(~Treatment)+
+  #geom_line(data=amb_mean2, aes(y=Temperature, x=hour),color="black",fill="black",size=1)+
+  geom_ribbon(aes(ymin=Temperature-se, ymax=Temperature+se), alpha=0.4)+
+  geom_hline(yintercept = 27.3, linetype="dashed", color = 'black', size=0.7, show.legend = TRUE)+
+  #geom_hline(yintercept = 28.3, linetype="solid", color = 'black', size=0.7, show.legend = TRUE)+
+  #scale_x_discrete(expression(Time), breaks=c("0:00:00","6:00:00","12:00:00","18:00:00"))+
+  scale_x_discrete(expression(Time~of~day))+
+  scale_y_continuous(expression(Temperature~(degree~C)), breaks=c(22,24,26,28,30,32,34,36))+
+  scale_color_brewer(palette ="Greys")+
+  scale_fill_brewer(palette ="Greys")+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5,size=12),#angling the labels on the x-axis
+        plot.title = element_text(margin = margin(t = 10, b = 10), hjust=0.5),#telling it where to position our plot title
+        panel.background= element_rect(fill=NA, color='black'),#this is making the black box around the graph
+        strip.background = element_blank(), 
+        #strip.text = element_blank(),
+        legend.title = element_text(),
+        legend.position=c(0.89,0.75),
+        axis.text.y = element_text(vjust=0.5, size=12), #making the axis text larger 
+        axis.title.x = element_text(vjust=0.5, size=12),#making the axis title larger 
+        axis.title.y = element_text(size=12))#making the axis title larger 
+all_STHS
+```
+```{r}
+tempall<-cowplot::plot_grid(all_STHS, nrow=3, ncol=1)
+tempall
+```
+#Photochemical yield (Fv/Fm)
+```{r}
+allsites<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/All sites yield data.csv", strip.white=T)
+allsites$Site<-as.factor(allsites$Site)
+allsites$Genus<-as.factor(allsites$Genus)
+allsites$ColonyID<-as.factor(allsites$ColonyID)
+allsites$Treatment<-as.factor(allsites$Treatment)
+allsites$Replicate<-as.factor(allsites$Replicate)
+allsites$Temperature<-as.numeric(allsites$Temperature)
+allsites
+#unique(allsites$Survival)
+```
+
+```{r}
+ed50_all<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/ed50 revised .csv", strip.white=T)
+ed50_all$Site<-as.factor(ed50_all$Site)
+ed50_all$Genus<-as.factor(ed50_all$Genus)
+ed50_all
+```
+```{r}
+ed50_spp<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/ed50 by genus.csv", strip.white=T)
+ed50_spp$Genus<-as.factor(ed50_spp$Genus)
+ed50_spp
+```
+
+
+```{r}
+pamsum_all_Y<-summarySE(allsites, measurevar='Y', groupvars=c('Site',"Treatment","Temperature",'Genus',"ColonyID"), na.rm=TRUE, conf.interval = 0.95)
+pamsum_all_Y
+```
+```{r}
+pamsum_spp<-summarySE(allsites, measurevar='Y', groupvars=c("Treatment","Temperature",'Genus',"ColonyID"), na.rm=TRUE, conf.interval = 0.95)
+pamsum_spp
+```
+
+
+##Stats
+```{r}
+sths.lm<- lm(Y~Treatment*Genus*Site, data=pamsum_all_Y) #Gaussian
+par(mfrow=c(2,3))
+plot(sths.lm, ask=FALSE, which=1:6)
+```
+```{r}
+library(lme4)
+Y.lme<-lmer(Y ~ Treatment*Genus*Site+
+               (1|ColonyID), 
+            na.action=na.exclude,data = pamsum_all_Y)
+car::Anova(Y.lme, type=3)
+tukey<- emmeans(Y.lme, list(pairwise ~ Treatment:Genus:Site), adjust = "tukey", simple="Genus")
+tukey
+```
+
+##Dose-response model - site x genus
+```{r}
+# Model Parameters:  b = shape parameter (i.e steepness); d=upper limit; e=ED50
+modNaive.Species <- drm(Y ~ Temperature, fct = L.3(), 
+            data = pamsum_all_Y,
+            curveid = Genus:Site,
+            pmodels = c( ~ Genus*Site,  ~ Genus*Site,  ~ Genus*Site), bcVal = 0.5)
+modNaive.Species2 <- drm(Y ~ Temperature, fct = LL.3(), 
+            data = pamsum_all_Y,
+            curveid = Genus:Site,
+            pmodels = c( ~ Genus*Site,  ~ Genus*Site,  ~ Genus*Site), bcVal = 0.5)
+summary(modNaive.Species)
+plot(modNaive.Species)
+ed50test<-ED(modNaive.Species, 50, interval="delta",type="absolute")
+ed50test
+ed50test2<-ED(modNaive.Species, 50, interval="delta",type="relative")
+ed50test2
+```
+```{r}
+AICc(modNaive.Species, modNaive.Species2)
+```
+
+```{r}
+##Create predictions data frame
+newdata = with(pamsum_all_Y, 
+                     data.frame(Genus = levels(Genus),
+                                 Site = levels(Site),
+                                 Temperature=seq(min(Temperature, na.rm=TRUE), max(Temperature, na.rm=TRUE)+ 1, 0.1)))
+
+pred<- as.data.frame(predict(modNaive.Species, newdata=newdata, interval = "confidence", level=0.95))
+#newdata = data.frame(newdata, fvfm = newdata$Prediction, Lower = newdata$Lower, Upper = newdata$Upper)
+pred$Genus = newdata$Genus
+pred$Site = newdata$Site
+pred$Temperature = newdata$Temperature
+pred.average = pred %>% 
+  group_by(Site, Genus, Temperature) %>% 
+  summarise_all(.funs=mean)
+pred.average
+```
+####Figure - yield with error
+```{r,warning=FALSE}
+pamsum_all_Y$Site<- factor(pamsum_all_Y$Site, levels =c("Reef Flat","Reef Crest","Shallow Lagoon","Deep Lagoon", "Fourth Point", "Harry's Bommie"))
+#pamsum_all$Treatment <- factor(pamsum_all$Treatment, levels=c("Ambient","T1","T2","T3","T4"))
+#pamsum_all_Y$Temperature<- factor(pamsum_all_Y$Temperature, levels =c("23.0","27.3","31.3","33.8","36.3"))
+#pamsum2$Bleach<- factor(pamsum2$Bleach, levels =c("Non-bleach","Bleach"))
+ed50_all$Site<- factor(ed50_all$Site, levels =c("Reef Flat","Reef Crest","Shallow Lagoon","Deep Lagoon", "Fourth Point", "Harry's Bommie"))
+pamsum_all_Y$Site<- factor(pamsum_all_Y$Site, levels =c("Reef Flat","Reef Crest","Shallow Lagoon","Deep Lagoon", "Fourth Point", "Harry's Bommie"))
+test.fig<-ggplot(pred.average, aes(y=Prediction, x=Temperature, color=Site, fill=Site))+ 
+  geom_line()+
+  geom_ribbon(aes(ymin = Lower, ymax = Upper, fill = Site), alpha = 0.5, show.legend = FALSE) +
+  facet_wrap(~Genus, nrow=1)+
+  #geom_point(size=3, position=position_dodge(0.5),stat="identity")+
+  #geom_errorbar(aes(ymin=Prediction-Lower, ymax=Prediction+Upper, width= 0.5),  position=position_dodge(0.5),stat="identity") +
+  scale_color_brewer(palette = "RdBu")+
+  scale_fill_brewer(palette = "RdBu")+
+  scale_x_continuous(expression(Temperature~(degree~C)), limits=c(23,38),breaks=c(24,27,30,33,36))+
+  #scale_y_continuous(expression(Photosynthetic~efficiency~(Fv/Fm)), limits=c(0,0.65), breaks=c(0,0.15,0.3,0.45,0.6))+  
+  #scale_color_manual("Bleach", values=c("Bleach"= '#DFD3B9',"Non-bleach"='#796334'))+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12),
+        #legend.position="none",
+        panel.background= element_rect(fill=NA, color='black'),
+        strip.text = element_text(vjust=0.5, size=12, face="italic"))
+test.fig
+```
+
+
+####Fig - drc
+```{r,warning=FALSE}
+ed50_all$Site<- factor(ed50_all$Site, levels =c("Reef Flat","Reef Crest","Shallow Lagoon","Deep Lagoon", "Fourth Point", "Harry's Bommie"))
+pamsum_all_Y$Site<- factor(pamsum_all_Y$Site, levels =c("Reef Flat","Reef Crest","Shallow Lagoon","Deep Lagoon", "Fourth Point", "Harry's Bommie"))
+pamfig_all_Y<-ggplot(pamsum_all_Y, aes(y=Y, x=Temperature, color=Site, fill=Site))+ 
+  geom_col(data = ed50_all, aes(y=Inf, x = ed50), linetype=2)+
+  #(data = ed50_all, aes(xintercept = ed50, linetype = 2, size=1, alpha = 0.8))+
+  #geom_point(data = ed50_all, aes(y=0.05, x = ed50),size=3)+
+  #geom_errorbarh(data = ed50_all, aes(xmin=Temperature-SE, xmax=Temperature+SE, width= 0.5),  position=position_dodge(0.5),stat="identity") +
+  geom_point(alpha=0.3,position=position_jitterdodge(0.05))+
+  geom_smooth(method=drm, method.args=list(fct = L.3()), se=F)+
+  facet_wrap(~Genus, nrow=3)+
+  scale_color_brewer(palette = "RdBu")+
+  scale_fill_brewer(palette = "RdBu")+
+  scale_x_continuous(expression(Temperature~(degree~C)), limits=c(23,38),breaks=c(24,26,28,30,32,34,36,38),expand = c(0.005, 0.005))+
+  scale_y_continuous(expression(Photosynthetic~efficiency~(Fv/Fm)), limits=c(0,0.65), breaks=c(0,0.15,0.3,0.45,0.6),expand = c(0.005, 0.005))+  
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12),
+        panel.background= element_rect(fill=NA, color='black'),
+        strip.text = element_text(vjust=0.5, size=12, face="italic"))
+pamfig_all_Y
+```
+
+###Dose-response model - genus
+```{r}
+# Model Parameters:  b = shape parameter (i.e steepness); d=upper limit; e=ED50
+modNaive.poc <- drm(Y ~ Temperature, fct = LL.3(), 
+            data = pamsum_all_Y,
+            curveid = Genus, bcVal = 0.5)
+summary(modNaive.poc)
+plot(modNaive.poc)
+ed50test<-ED(modNaive.poc, 50, interval="delta",type="absolute")
+ed50test
+ed50test2<-ED(modNaive.poc, 50, interval="delta",type="relative")
+ed50test2
+```
+
+#Thermal tolerance and seawater temperature
+```{r}
+ed50_all<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/ed50 revised .csv", strip.white=T)
+ed50_all$Site<-as.factor(ed50_all$Site)
+ed50_all$Genus<-as.factor(ed50_all$Genus)
+ed50_all
+```
+
+##GAMs - all metrics
+```{r}
+gam.all <-gam(ed50~  s(Amplitude, bs="tp", k=3)+
+                       s(Maximum, bs="tp", k=3)+
+                       s(Minimum, bs="tp", k=3)+
+                       s(Mean, bs="tp", k=3)+
+                       s(DHW2016, bs="tp", k=3), 
+                       family=Gamma(link=log), data=ed50_all)
+
+gam.all2 <-gam(ed50~  s(Amplitude, bs="tp", k=3)+
+                       s(Maximum, bs="tp", k=3)+
+                       s(Minimum, bs="tp", k=3)+
+                       s(Mean, bs="tp", k=3),
+                       family=Gamma(link=log), data=ed50_all)
+
+gam.all3 <-gam(ed50~  s(Amplitude, bs="tp", k=3)+
+                       s(Maximum, bs="tp", k=3)+
+                       s(Minimum, bs="tp", k=3),
+                       family=Gamma(link=log), data=ed50_all)
+
+gam.all4 <-gam(ed50~  s(Amplitude, bs="tp", k=3)+
+                       s(Maximum, bs="tp", k=3),
+                       family=Gamma(link=log), data=ed50_all)
+
+gam.all5 <-gam(ed50~  s(Amplitude, bs="tp", k=3),
+                       family=Gamma(link=log), data=ed50_all)
+
+gam.all9 <-gam(ed50~  s(Amplitude, bs="tp", k=3, by=Genus)+
+                       s(Maximum, bs="tp", k=3, by=Genus),
+                       family=Gamma(link=log), data=ed50_all)
+
+gam.all10 <-gam(ed50~  s(Amplitude, bs="tp", k=3, by=Genus),
+                       family=Gamma(link=log), data=ed50_all)
+```
+
+```{r}
+library(MuMIn)
+AICc(gam.all,gam.all2,gam.all3,gam.all4,gam.all5,gam.all9, gam.all10)
+```
+```{r}
+summary(gam.all5)
+par(mfrow=c(2,2))
+gam.check(gam.all5, pch=16)
+```
+
+```{r}
+plot.gam(gam.all5, 
+     pages=5,
+     rug=F,
+     #ylab="Calcification", 
+    #xlab="Calcifying organisms",
+     all.terms=TRUE,
+     shade=TRUE, 
+     pch=16, cex=0.5,
+     resid=T, 
+     seWithMean=TRUE)
+     #shift=-1.275
+```
+##GAMs - only maximum diel amplitude
+```{r}
+library(mgcv)
+
+gam.Amp_max <-gam(ed50~
+                 poly(Amp_max, 2), by=Genus,data=ed50_all)
+gam.Amp_max2 <-gam(ed50~
+                       s(Amp_max, k=3)+ s(Amp_max, by=Genus, k=3), data=ed50_all)
+gam.Amp_max3 <-gam(ed50~
+                       s(Amp_max, bs="tp",k=3)+ s(Amp_max, bs="tp",by=Genus, k=3), data=ed50_all)
+gam.Amp_max4 <-gam(ed50~
+                       s(Amp_max, bs="tp", k=3), data=ed50_all)
+gam.Amp_max5 <-gam(ed50~
+                       s(Amp_max, bs="cc", k=3, by=Genus), data=ed50_all)
+gam.Amp_max6 <-gam(ed50~
+                 poly(Amp_max, 2),data=ed50_all)
+gam.Amp_max7 <-gam(ed50~
+                       s(Amp_max, bs="tp", k=3), family=Gamma(link=log), data=ed50_all)
+gam.Amp_max8 <-gam(ed50~
+                       s(Amp_max, bs="cc", k=3), family=Gamma(link=log), data=ed50_all)
+gam.Amp_max9 <-gam(ed50~
+                       s(Amp_max, bs="cp", k=3), family=Gamma(link=log), data=ed50_all)
+#gam.Amp_max6 <-gam(ed50~poly(Amp_max, 2, raw = TRUE, by=Genus), data=ed50_all)
+```
+
+```{r}
+library(MuMIn)
+AICc(gam.Amp_max,gam.Amp_max2,gam.Amp_max3,gam.Amp_max4,gam.Amp_max5,gam.Amp_max6,gam.Amp_max7,gam.Amp_max8,gam.Amp_max9)
+```
+
+```{r}
+round(Weights(AICc(gam.Amp_max,
+     gam.Amp_max2,
+     gam.Amp_max3,
+     gam.Amp_max4,
+     gam.Amp_max5,gam.Amp_max6,  gam.Amp_max7,gam.Amp_max8,  gam.Amp_max9)),3)
+```
+```{r}
+summary(gam.Amp_max5)
+par(mfrow=c(2,2))
+gam.check(gam.Amp_max5, pch=16)
+```
+```{r}
+plot.gam(gam.Amp_max8, 
+     pages=5,
+     rug=F,
+     #ylab="Calcification", 
+    #xlab="Calcifying organisms",
+     all.terms=TRUE,
+     shade=TRUE, 
+     pch=16, cex=0.5,
+     resid=T, 
+     seWithMean=TRUE)
+     #shift=-1.275
+```
+
+```{r}
+#ed50_all$Site<- factor(ed50_all$Site, levels =c("Harry's Bommie","Fourth Point","Deep Lagoon","Reef Crest","Reef Flat","Shallow Lagoon"))
+ed50_amp_point<-ggplot(ed50_all, aes(y=ed50, x=Amp_max, color=Site, shape=Genus))+ 
+  #facet_wrap(~Genus)+
+  #geom_point(alpha=0.5,position=position_jitterdodge(0.05))+
+  #geom_smooth(method="gam",formula=y ~ s(x, bs = "tp", k=3),method.args=list(family="Gamma"), color='black', fill='grey39')+
+  geom_point(size=3)+
+  #geom_smooth(method="gam",formula= y ~ poly(x, 2),method.args=list(family="gaussian"), color='black', fill='grey39')+
+  #geom_smooth(method=drm, method.args=list(fct=LL.3()), se=F)+
+  #geom_path(aes(stat="identity"), position=position_dodge(0.5))+
+  #geom_point(size=3, position=position_dodge(0.5),stat="identity")+
+  #geom_pointrange(aes(ymin=ed50-SE, ymax=ed50+SE, width= 0.5),  position=position_dodge(0.6),stat="identity") +
+  scale_color_brewer(palette = "RdBu", direction=-1)+
+  #scale_shape_manual()+
+  #scale_fill_brewer(palette = "Set2")+
+  scale_y_continuous(expression(ED50), limits=c(35,38))+
+  scale_x_continuous(expression(Maximum~daily~amplitude~(degree~C~day^-1)), limits=c(2,8), breaks=c(2,3,4,5,6,7,8))+
+  #scale_color_manual("Bleach", values=c("Bleach"= '#DFD3B9',"Non-bleach"='#796334'))+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(vjust=0.5, size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12, face="italic"),
+        legend.position="none",
+        panel.background= element_rect(fill=NA, color='black'),
+        strip.text = element_text(vjust=0.5, size=12))
+ed50_amp_point
+```
+```{r}
+ed50_amp_smooth<-ggplot(ed50_all, aes(y=ed50, x=Amp_max, color=Site))+ 
+  #geom_point(alpha=0.5,position=position_jitterdodge(0.05))+
+  geom_smooth(method="gam",formula=y ~ s(x, bs = "tp", k=3),method.args=list(family="Gamma"), color='black', fill='grey39')+
+  #geom_point(size=3)+
+  #geom_smooth(method="gam",formula= y ~ poly(x, 2),method.args=list(family="gaussian"), color='black', fill='grey39')+
+  #geom_smooth(method=drm, method.args=list(fct=LL.3()), se=F)+
+  #geom_path(aes(stat="identity"), position=position_dodge(0.5))+
+  #geom_point(size=3, position=position_dodge(0.5),stat="identity")+
+  #geom_errorbar(aes(ymin=ed50-SE, ymax=ed50+SE, width= 0.5),  position=position_dodge(0.5),stat="identity") +
+  scale_color_brewer(palette = "RdBu", direction=-1)+
+  #scale_shape_manual()+
+  #scale_fill_brewer(palette = "Set2")+
+  scale_y_continuous(expression(ED50), limits=c(35,38))+
+  scale_x_continuous(expression(Maximum~daily~amplitude~(degree~C~day^-1)), limit=c(2,8), breaks=c(2,3,4,5,6,7,8))+
+  #scale_color_manual("Bleach", values=c("Bleach"= '#DFD3B9',"Non-bleach"='#796334'))+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(vjust=0.5, size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12, face="italic"),
+        #legend.position="none",
+        panel.background= element_rect(fill=NA, color='black'),
+        strip.text = element_text(vjust=0.5, size=12))
+ed50_amp_smooth
+```
+```{r}
+#ed50_all$Site<- factor(ed50_all$Site, levels =c("Harry's Bommie","Fourth Point","Deep Lagoon","Reef Crest","Reef Flat","Shallow Lagoon"))
+ed50_amp_point2<-ggplot(ed50_all, aes(y=ed50, x=Amplitude, color=Site, shape=Genus))+ 
+  #facet_wrap(~Genus)+
+  #geom_point(alpha=0.5,position=position_jitterdodge(0.05))+
+  #geom_smooth(method="gam",formula=y ~ s(x, bs = "tp", k=3),method.args=list(family="Gamma"), color='black', fill='grey39')+
+  geom_point(size=3)+
+  #geom_smooth(method="gam",formula= y ~ poly(x, 2),method.args=list(family="gaussian"), color='black', fill='grey39')+
+  #geom_smooth(method=drm, method.args=list(fct=LL.3()), se=F)+
+  #geom_path(aes(stat="identity"), position=position_dodge(0.5))+
+  #geom_point(size=3, position=position_dodge(0.5),stat="identity")+
+  #geom_pointrange(aes(ymin=ed50-SE, ymax=ed50+SE, width= 0.5),  position=position_dodge(0.6),stat="identity") +
+  scale_color_brewer(palette = "RdBu", direction=-1)+
+  #scale_shape_manual()+
+  #scale_fill_brewer(palette = "Set2")+
+  scale_y_continuous(expression(ED50), limits=c(35,38))+
+  scale_x_continuous(expression(Mean~daily~amplitude~(degree~C~day^-1)), limits=c(1,3))+
+  #scale_color_manual("Bleach", values=c("Bleach"= '#DFD3B9',"Non-bleach"='#796334'))+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(vjust=0.5, size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12, face="italic"),
+        legend.position="none",
+        panel.background= element_rect(fill=NA, color='black'),
+        strip.text = element_text(vjust=0.5, size=12))
+ed50_amp_point2
+```
+```{r}
+ed50_amp_smooth2<-ggplot(ed50_all, aes(y=ed50, x=Amplitude, color=Site))+ 
+  #geom_point(alpha=0.5,position=position_jitterdodge(0.05))+
+  geom_smooth(method="gam",formula=y ~ s(x, bs = "tp", k=3),method.args=list(family="Gamma"), color='black', fill='grey39')+
+  #geom_point(size=3)+
+  #geom_smooth(method="gam",formula= y ~ poly(x, 2),method.args=list(family="gaussian"), color='black', fill='grey39')+
+  #geom_smooth(method=drm, method.args=list(fct=LL.3()), se=F)+
+  #geom_path(aes(stat="identity"), position=position_dodge(0.5))+
+  #geom_point(size=3, position=position_dodge(0.5),stat="identity")+
+  #geom_errorbar(aes(ymin=ed50-SE, ymax=ed50+SE, width= 0.5),  position=position_dodge(0.5),stat="identity") +
+  scale_color_brewer(palette = "RdBu", direction=-1)+
+  #scale_shape_manual()+
+  #scale_fill_brewer(palette = "Set2")+
+  scale_y_continuous(expression(ED50), limits=c(35,38))+
+  scale_x_continuous(expression(Maximum~daily~amplitude~(degree~C~day^-1)), limit=c(1,3))+
+  #scale_color_manual("Bleach", values=c("Bleach"= '#DFD3B9',"Non-bleach"='#796334'))+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(vjust=0.5, size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12, face="italic"),
+        #legend.position="none",
+        panel.background= element_rect(fill=NA, color='black'),
+        strip.text = element_text(vjust=0.5, size=12))
+ed50_amp_smooth2
+```
+
+```{r}
+#ed50_all$Site<- factor(ed50_all$Site, levels =c("Harry's Bommie","Fourth Point","Deep Lagoon","Reef Crest","Reef Flat","Shallow Lagoon"))
+ed50_amp_point_site<-ggplot(ed50_all, aes(y=ed50, x=Site, color=Site, shape=Genus))+ 
+  facet_wrap(~Genus)+
+  #geom_point(alpha=0.5,position=position_jitterdodge(0.05))+
+  #geom_smooth(method="gam",formula=y ~ s(x, bs = "tp", k=3),method.args=list(family="Gamma"), color='black', fill='grey39')+
+  geom_point(size=3,  position=position_dodge(0.6),stat="identity")+
+  #geom_smooth(method="gam",formula= y ~ poly(x, 2),method.args=list(family="gaussian"), color='black', fill='grey39')+
+  #geom_smooth(method=drm, method.args=list(fct=LL.3()), se=F)+
+  #geom_path(aes(stat="identity"), position=position_dodge(0.5))+
+  #geom_point(size=3, position=position_dodge(0.5),stat="identity")+
+  geom_pointrange(aes(ymin=ed50-SE, ymax=ed50+SE, width= 0.5),  position=position_dodge(0.6),stat="identity") +
+  scale_color_brewer(palette = "RdBu", direction=-1)+
+  #scale_shape_manual()+
+  #scale_fill_brewer(palette = "Set2")+
+  scale_y_continuous(expression(ED50), limits=c(34,42))+
+  #scale_x_continuous(expression(Mean~daily~amplitude~(degree~C~day^-1)), limits=c(2,8), breaks=c(2,3,4,5,6,7,8))+
+  #scale_color_manual("Bleach", values=c("Bleach"= '#DFD3B9',"Non-bleach"='#796334'))+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12, angle =90),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(vjust=0.5, size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12, face="italic"),
+        legend.position="none",
+        panel.background= element_rect(fill=NA, color='black'),
+        strip.text = element_text(vjust=0.5, size=12))
+ed50_amp_point_site
+```
+
+```{r}
+ed50fig2<-cowplot::plot_grid(ed50_amp_point_site,ed50_amp_point,ed50_amp_smooth2,ed50_amp_point2, ed50_amp_smooth, ncol=2)
+ed50fig2
+```
+
+#Color score - test
+```{r}
+color_test<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/Color score_SL.csv", strip.white=T)
+color_test$Site<-as.factor(color_test$Site)
+color_test$Genus<-as.factor(color_test$Genus)
+color_test$Genotype<-as.factor(color_test$Genotype)
+color_test$Treatment<-as.factor(color_test$Treatment)
+color_test$Color_type<-as.factor(color_test$Color_type)
+color_test$Color<-as.factor(color_test$Color)
+color_test
+```
+```{r}
+color_test <- color_test %>% 
+  mutate(Temperature= ifelse(Treatment %in% c("T1"), "27.3",
+                         ifelse(Treatment %in% c("T2"), "31.3",
+                                ifelse(Treatment %in% c("T3"), "33.8",
+                                       ifelse(Treatment %in% c("T4"), "36.3",NA)))))
+color_test
+```
+
+```{r}
+color_test_RGB<-filter(color_test, Color_type == "RGB")
+color_test_RGB
+```
+```{r}
+color_test_Ronly<-filter(color_test_RGB, Color == "R")
+color_test_Ronly
+```
+```{r}
+hist(color_test_Ronly$Mean1)
+```
+
+```{r}
+color_test.lm<- lm(Mean1~Treatment*Genus, data=color_test_Ronly) #Gaussian
+par(mfrow=c(2,3))
+plot(color_test.lm, ask=FALSE, which=1:6)
+```
+```{r}
+library(lme4)
+color_test.lme<-lmer(Mean1 ~ Treatment*Genus+
+               (1|Genotype), 
+            na.action=na.exclude,data = color_test_Ronly)
+
+Anova(color_test.lme, type=3)
+tukey<- emmeans(color_test.lme, list(pairwise ~ Treatment:Genus), adjust = "tukey", simple="Treatment")
+tukey
+```
+
+```{r}
+Genus_names <- c(
+                    `Poc` = "Pocillopora",
+                    `Por` = "Porites")
+```
+
+```{r,warning=FALSE}
+#ed50_all$Site<- factor(ed50_all$Site, levels =c("Reef Flat","Reef Crest","Shallow Lagoon","Deep Lagoon", "Fourth Point", "Harry's Bommie"))
+#pamsum_all_Y$Site<- factor(color_test_Ronly$Site, levels =c("Reef Flat","Reef Crest","Shallow Lagoon","Deep Lagoon", "Fourth Point", "Harry's Bommie"))
+color_fig_test<-ggplot(color_test_Ronly, aes(y=Mean1, x=Temperature, color=Site, fill=Site))+ 
+  #geom_col(data = ed50_all, aes(y=Inf, x = ed50), linetype=2)+
+  #(data = ed50_all, aes(xintercept = ed50, linetype = 2, size=1, alpha = 0.8))+
+  #geom_point(data = ed50_all, aes(y=0.05, x = ed50),size=3)+
+  #geom_errorbarh(data = ed50_all, aes(xmin=Temperature-SE, xmax=Temperature+SE, width= 0.5),  position=position_dodge(0.5),stat="identity") +
+  geom_point(alpha=0.8,position=position_jitterdodge(0.05))+
+  geom_boxplot(alpha=0.4, color="black", outlier.shape = NA)+
+  #geom_smooth(method=drm, method.args=list(fct = L.3()), se=F)+
+  facet_wrap(~Genus, ncol=2, labeller = as_labeller(Genus_names))+
+  scale_color_brewer(palette = "RdBu")+
+  scale_fill_brewer(palette = "RdBu")+
+  #scale_x_continuous(expression(Temperature~(degree~C)), limits=c(23,38),breaks=c(24,26,28,30,32,34,36,38),expand = c(0.005, 0.005))+
+  scale_y_continuous(expression(Intensity~within~the~red~channel), limits=c(0,255), expand = c(0.005, 0.005))+  
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12),
+        panel.background= element_rect(fill=NA, color='black'),
+        legend.position= c(0.89,0.89),
+        strip.text = element_text(vjust=0.5, size=12, face="italic"))
+color_fig_test
+```
+#Color score - ALL
+```{r}
+color<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/Color scores all HB2.csv", strip.white=T)
+color$Site<-as.factor(color$Site)
+color$Genus<-as.factor(color$Genus)
+color$Genotype<-as.factor(color$Genotype)
+color$Treatment<-as.factor(color$Treatment)
+color$Color_type<-as.factor(color$Color_type)
+color$Color<-as.factor(color$Color)
+color
+```
+```{r}
+color <- color %>% 
+  mutate(Temperature= ifelse(Treatment %in% c("T0"), "23.0",
+           ifelse(Treatment %in% c("T1"), "27.3",
+                         ifelse(Treatment %in% c("T2"), "31.3",
+                                ifelse(Treatment %in% c("T3"), "33.8",
+                                       ifelse(Treatment %in% c("T4"), "36.3",NA))))))
+color
+```
+
+```{r}
+color_RGB<-filter(color, Color_type == "RGB")
+color_RGB
+```
+```{r}
+color_Ronly<-filter(color_RGB, Color == "R")
+color_Ronly$Temperature<-as.numeric(color_Ronly$Temperature)
+color_Ronly
+```
+
+
+```{r}
+hist(color_Ronly$Mean_frag)
+```
+```{r}
+color_stand<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/R color standards all .csv", strip.white=T)
+color_stand$Site<-as.factor(color_stand$Site)
+color_stand
+```
+```{r}
+allcolor <- merge(color_Ronly, color_stand, by = c('Label_match', "Site"))
+allcolor
+```
+```{r}
+allcolor <- mutate(allcolor, prop_red = Mean_frag / Mean_Rstandard)
+allcolor
+```
+```{r}
+allcolor <- mutate(allcolor, frag_dark = MaxThr1 - Mean_frag)
+allcolor
+```
+
+```{r}
+allcolor <- mutate(allcolor, R_dark = MaxThr_R - Mean_Rstandard)
+allcolor
+```
+
+```{r}
+allcolor <- mutate(allcolor, prop_dark = frag_dark / R_dark)
+allcolor <- mutate(allcolor, per_dark = prop_dark * 100)
+allcolor
+```
+```{r}
+#write.csv(allcolor,"all color.csv")
+```
+
+```{r}
+library(Rmisc)
+color_sum<-summarySE(allcolor, measurevar='prop_dark', groupvars=c('Genus','Site', 'Temperature'), na.rm=TRUE, conf.interval = 0.95)
+color_sum
+```
+
+
+```{r}
+controlonly<- filter(allcolor, Temperature == "27.3")
+controlonly
+```
+
+```{r}
+controlonly_sum<- filter(color_sum, Temperature == "27.3")
+controlonly_sum
+```
+```{r}
+write.csv(controlonly_sum,"color sum at 27.3.csv")
+```
+
+```{r}
+allcolor <- allcolor%>%
+  group_by(Genus, Site) %>%
+  mutate(prop_dark_norm = prop_dark / controlonly_sum$prop_dark)
+allcolor
+```
+
+```{r}
+unique(controlonly$Treatment)
+```
+
+```{r}
+hist(allcolor$prop_red)
+```
+
+```{r}
+color.lm<- lm(prop_dark~Treatment*Genus*Site, data=allcolor) #Gaussian
+par(mfrow=c(2,3))
+plot(color.lm, ask=FALSE, which=1:6)
+```
+```{r}
+library(lme4)
+color.lme<-lmer(prop_dark ~ Treatment*Genus*Site+
+               (1|Genotype), 
+            na.action=na.exclude,data = allcolor)
+
+Anova(color.lme, type=3)
+tukey<- emmeans(color.lme, list(pairwise ~ Genus:Site), adjust = "tukey", simple="Site")
+tukey
+```
+
+```{r}
+library(lme4)
+color_control.lme<-lmer(prop_dark ~ Genus*Site+
+               (1|Genotype), 
+            na.action=na.exclude,data = controlonly)
+color_control.lm<-lm(prop_dark ~ Genus*Site, 
+            na.action=na.exclude,data = controlonly)
+Anova(color_control.lme)
+tukey<- emmeans(color_control.lm, list(pairwise ~ Genus:Site), adjust = "tukey", simple="Site")
+tukey
+```
+
+
+```{r}
+Genus_names <- c(
+                    `Poc` = "Pocillopora",
+                    `Acp` = "Acropora",
+                    `Por` = "Porites")
+```
+
+```{r}
+library(drc)
+```
+####Figure - site x genus
+```{r,warning=FALSE}
+controlonly$Site<- factor(controlonly$Site, levels =c("RF","RC","SL","DL", "FP", "HB"))
+#pamsum_all_Y$Site<- factor(color_test_Ronly$Site, levels =c("Reef Flat","Reef Crest","Shallow Lagoon","Deep Lagoon", "Fourth Point", "Harry's Bommie"))
+color_fig_2<-ggplot(controlonly, aes(y=prop_dark, x=Temperature, color=Site, fill=Site))+ 
+  #geom_col(data = ed50_all, aes(y=Inf, x = ed50), linetype=2)+
+  #(data = ed50_all, aes(xintercept = ed50, linetype = 2, size=1, alpha = 0.8))+
+  #geom_point(data = ed50_all, aes(y=0.05, x = ed50),size=3)+
+  #geom_errorbarh(data = ed50_all, aes(xmin=Temperature-SE, xmax=Temperature+SE, width= 0.5),  position=position_dodge(0.5),stat="identity") +
+  geom_point(alpha=0.8,position=position_jitterdodge(0.05))+
+  geom_boxplot(alpha=0.4, color="black", outlier.shape = NA)+
+  #geom_smooth(method=drm, method.args=list(fct = LL.3()), se=F)+
+  facet_wrap(~Genus, ncol=3, labeller = as_labeller(Genus_names))+
+  scale_color_brewer(palette = "RdBu")+
+  scale_fill_brewer(palette = "RdBu")+
+  scale_x_discrete(expression(Temperature~(degree~C)),expand = c(0.005, 0.005))+
+  scale_y_continuous(expression(Relative~darkness~within~the~red~channel), expand = c(0.005, 0.005))+  
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12),
+        panel.background= element_rect(fill=NA, color='black'),
+        #legend.position= c(0.89,0.89),
+        strip.text = element_text(vjust=0.5, size=12, face="italic"))
+color_fig_2
+```
+```{r}
+library(cowplot)
+figs<-cowplot::plot_grid(color_fig_2,color_fig_2,color_fig_2,color_fig_2, ncol=2, nrow=2, align="h", axis = "bt")
+figs
+```
+
+```{r}
+gam.color2 <-gam(prop_dark_norm~  s(Temperature, bs="tp", k=3)+
+                s(Site, bs = 'fs', k=3)+
+                s(Genus, bs = 'fs', k=3)+
+                s(Genotype, bs='re'), data=colornorm)
+summary(gam.color2)
+```
+
+
+```{r}
+newdata = with(colornorm, 
+                     expand.grid(Genus = levels(Genus),
+                          Site = levels(Site),
+                          Genotype = levels(Genotype),
+                          Temperature=seq(min(Temperature, na.rm=TRUE), max(Temperature, na.rm=TRUE)+ 1, 0.1)))
+newdata
+# Use the predict() function to generate predicted values of y for the sequence of temperatures
+y_pred <-as.data.frame(predict(gam.color2, newdata=newdata, type="response"))
+y_pred
+
+y_pred$Genus = newdata$Genus
+y_pred$Site = newdata$Site
+y_pred$Temperature = newdata$Temperature
+
+pred.average = y_pred %>% 
+  group_by(Genus, Site, Temperature) %>% 
+  summarise_all(.funs=mean)
+pred.average
+colnames(pred.average)[4] <- "prop_dark"
+pred.average$prop_dark <- round(pred.average$prop_dark, 2)
+pred.average
+
+# Subset the data to include the two categorical variables, the temperature variable, and the color score variable
+my_subset <- pred.average[, c("Genus", "Site", "Temperature", "prop_dark")]
+my_subset
+
+my_summary<-pred.average%>%
+  group_by(Genus, Site)%>%
+  summarize_at(vars(prop_dark), funs(mean, min, max), na.rm=T)
+my_summary
+
+# Calculate the halfway value of color score across all groups
+my_summary$prop_dark<- (my_summary$max + my_summary$min)/2
+my_summary$prop_dark <- round(my_summary$prop_dark, 2)
+my_summary
+```
+
+```{r}
+try<- merge(pred.average, my_summary, by=c("prop_dark", "Genus", "Site"), all=T)
+my_data_clean <- na.omit(try)
+my_data_clean
+```
+
+
+```{r}
+sum_color<-summarySE(my_data_clean, measurevar='Temperature', groupvars=c("Genus",'Site', "prop_dark"), na.rm=TRUE, conf.interval = 0.95)
+sum_color
+```
+####Figure - GAM
+```{r}
+colornorm$Site<- factor(colornorm$Site, levels =c("RF","RC","SL","DL", "FP", "HB"))
+color_fig_gam2<-ggplot(colornorm, aes(y=prop_dark_norm, x=Temperature, color=Site, fill=Site))+ 
+  #geom_point(size=3, position=position_dodge(0.3),stat="identity")+
+  geom_smooth(method="gam", formula = y ~ s(x, bs = "cs", k=3), level=0.75)+
+  geom_point(alpha=0.4)+
+  #geom_hline(data=mid, aes(yintercept=mid,color = factor(Site)), size=1, linetype="solid")+
+  #geom_linerange(aes(ymin=prop_dark-se, ymax=prop_dark+se), width= 1,  position=position_dodge(0.3),stat="identity") +
+  #geom_path(aes(group = interaction(Genus, Site), stat="identity"), position=position_dodge(0.3), linetype="solid", size=1)+
+  scale_x_continuous(expression(Temperature~(degree~C)))+
+  scale_y_continuous(expression(Relative~darkness~within~the~red~channel), limits=c(0.4,1.5),expand = c(0.005, 0.005))+  
+  facet_wrap(~Genus, ncol=3, labeller = as_labeller(Genus_names))+
+  scale_color_brewer(palette = "RdBu")+
+  scale_fill_brewer(palette = "RdBu")+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(vjust=0.5, size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12),
+        #legend.position="none",
+        panel.background= element_rect(fill=NA, color='black'),
+        strip.text = element_text(size=12,face="italic"))
+color_fig_gam2
+```
+
+#Comparison of ed50 and color score
+
+```{r}
+# Step 3: Fit a linear regression model
+lm_model <- lm(ed50 ~ prop_dark, data = ed50_all)
+summary(lm_model)
+
+# Step 4: Calculate R-squared value
+rsquared <- summary(lm_model)$r.squared
+coefficients <- coef(lm_model)
+intercept <- coefficients[1]
+slope <- coefficients[2]
+# Equation of the trendline
+trend_equation <- paste("y =", round(slope, 2), "x +", round(intercept, 2))
+print(paste("Equation of the trendline:", trend_equation))
+
+print(paste("R-squared value:", round(rsquared, 4)))
+
+```
+
+```{r}
+comparecolored50<-ggplot(ed50_all, aes(y=ed50, x=prop_dark))+ 
+  geom_point(alpha=0.4)+
+  geom_smooth(method="lm", color="black")+
+  #facet_wrap(~Genus, ncol=3, labeller = as_labeller(Genus_names))+
+  #scale_color_brewer(palette = "RdBu")+
+  #scale_fill_brewer(palette = "RdBu")+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5, size=12),
+        axis.text.y=element_text(vjust=0.5, size=12),
+        axis.title.x=element_text(size=12),
+        axis.title.y=element_text(size=12),
+        legend.text = element_text(vjust=0.5, size=12),
+        legend.position="none",
+        panel.background= element_rect(fill=NA, color='black'),
+        strip.text = element_text(size=12, face="italic"))
+comparecolored50 
+```
+
+#Comparison across studies
+```{r}
+comparison<-read.csv("/Users/imkri/Desktop/Penn Postdoc/Heron 2022/ed50 comparison across studies.csv", strip.white=T)
+comparison$Location<-as.factor(comparison$Location)
+comparison$Genus<-as.factor(comparison$Genus)
+comparison$Species<-as.factor(comparison$Species)
+comparison$Reef<-as.factor(comparison$Reef)
+comparison
+```
+
+
+```{r}
+comparison_sum<-summarySE(comparison, measurevar='ed50', groupvars=c('Location',"Species"), na.rm=TRUE, conf.interval = 0.95)
+comparison_sum
+```
+
+```{r}
+comparison.lm<- lm(ed50~Genus*Location, data=comparison) #Gaussian
+par(mfrow=c(2,3))
+plot(comparison.lm, ask=FALSE, which=1:6)
+```
+##Stats
+```{r}
+library(lme4)
+comparison.lme<-lm(ed50 ~ Genus*Location,
+            na.action=na.exclude,data = comparison)
+Anova(comparison.lme)
+tukey<- emmeans(comparison.lme, list(pairwise ~ Genus:Location), adjust = "tukey", simple="Location")
+tukey
+```
+
+```{r,warning=FALSE}
+comparison_sum$Species<- factor(comparison_sum$Species, levels =c("Acropora cf. humilis", "Acropora cf. aspera" ,"Acropora cervicornis",  "Acropora cf. hemprichii",  "Pocillopora cf. damicornis","Pocillopora meandrina","Pocillopora verrucosa","Pocillopora cf. verrucosa", "Stylophora cf. pistillata","Porites cf. lobata"))
+comparison$Species<- factor(comparison$Species, levels =c("Acropora cf. humilis", "Acropora cf. aspera" ,"Acropora cervicornis",  "Acropora cf. hemprichii",  "Pocillopora cf. damicornis","Pocillopora meandrina","Pocillopora verrucosa","Pocillopora cf. verrucosa", "Stylophora cf. pistillata","Porites cf. lobata"))
+comparison$Location<- factor(comparison$Location, levels =c("Heron Reef", "Florida" ,"Coral Sea",  "Red Sea"))
+comparison_sum$Location<- factor(comparison_sum$Location, levels =c("Heron Reef", "Florida" ,"Coral Sea",  "Red Sea"))
+comparison_fig_sum<-ggplot(comparison_sum, aes(y=ed50, x=Species, group=Species))+
+  geom_point(data=comparison, aes(y=ed50, x=Species), color="grey60",alpha=0.6)+geom_point(size=3, stat="identity", color="black")+
+  geom_linerange(aes(ymin=ed50-se, ymax=ed50+se), color="black")+
+  
+  facet_wrap(~Location, scales="free_x", nrow=1)+
+  scale_y_continuous(expression(ed50),limits=c(34,38))+
+  theme_classic()+
+  theme(axis.text.x=element_text(vjust=0.5,size=12, angle=90, face="italic"),#angling the labels on the x-axis
+        plot.title = element_text(margin = margin(t = 10, b = 10), hjust=0.5),#telling it where to position our plot title
+        panel.background= element_rect(fill=NA, color='black'),#this is making the black box around the graph
+        strip.background = element_blank(), 
+        legend.title = element_blank(),
+        legend.position="none",
+        axis.text.y = element_text(vjust=0.5, size=12), #making the axis text larger 
+        axis.title.x = element_blank(),#making the axis title larger 
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(vjust=0.5, size=12))#making the axis title larger 
+comparison_fig_sum
+```

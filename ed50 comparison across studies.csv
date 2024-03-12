@@ -1,0 +1,69 @@
+Location,Genus,Species,Reef,ed50,Lower,Upper
+Coral Sea,Acropora,Acropora cf. humilis,Frederick,34.57,0.24,0.23
+Coral Sea,Acropora,Acropora cf. humilis,Herald,34.96,0.23,0.22
+Coral Sea,Acropora,Acropora cf. humilis,Chilcott,35.5,0.21,0.22
+Coral Sea,Acropora,Acropora cf. humilis,Bougainville,35.67,0.19,0.18
+Coral Sea,Acropora,Acropora cf. humilis,Moore,35.47,0.21,0.22
+Coral Sea,Acropora,Acropora cf. humilis,Lihou,35.45,0.21,0.21
+Coral Sea,Acropora,Acropora cf. humilis,Flinders,35.57,0.19,0.2
+Coral Sea,Acropora,Acropora cf. humilis,Saumarez,,0,0
+Coral Sea,Acropora,Acropora cf. humilis,Wreck,35.67,0.18,0.17
+Coral Sea,Pocillopora,Pocillopora meandrina,Frederick,34.83,0.23,0.23
+Coral Sea,Pocillopora,Pocillopora meandrina,Herald,35.84,0.37,0.37
+Coral Sea,Pocillopora,Pocillopora meandrina,Chilcott,35.67,0.22,0.23
+Coral Sea,Pocillopora,Pocillopora meandrina,Bougainville,36.05,0.2,0.19
+Coral Sea,Pocillopora,Pocillopora meandrina,Moore,36.09,0.23,0.23
+Coral Sea,Pocillopora,Pocillopora meandrina,Lihou,35.4,0.35,0.35
+Coral Sea,Pocillopora,Pocillopora meandrina,Flinders,36.75,0.3,0.31
+Coral Sea,Pocillopora,Pocillopora meandrina,Saumarez,35.76,0.23,0.23
+Coral Sea,Pocillopora,Pocillopora meandrina,Wreck,35.44,0.2,0.2
+Coral Sea,Pocillopora,Pocillopora verrucosa,Frederick,,0,0
+Coral Sea,Pocillopora,Pocillopora verrucosa,Herald,35.85,0.25,0.25
+Coral Sea,Pocillopora,Pocillopora verrucosa,Chilcott,,0,0
+Coral Sea,Pocillopora,Pocillopora verrucosa,Bougainville,36.47,0.11,0.12
+Coral Sea,Pocillopora,Pocillopora verrucosa,Moore,36.37,0.27,0.27
+Coral Sea,Pocillopora,Pocillopora verrucosa,Lihou,36.18,0.26,0.25
+Coral Sea,Pocillopora,Pocillopora verrucosa,Flinders,36.75,0.18,0.17
+Coral Sea,Pocillopora,Pocillopora verrucosa,Saumarez,,0,0
+Coral Sea,Pocillopora,Pocillopora verrucosa,Wreck,35.5,0.26,0.25
+Heron Reef,Pocillopora,Pocillopora cf. damicornis,Deep Lagoon,36.07983,0.4592921,0.4592921
+Heron Reef,Porites,Porites cf. lobata,Deep Lagoon,37.40039,1.327121,1.327121
+Heron Reef,Pocillopora,Pocillopora cf. damicornis,Fourth Point,35.09918,0.2377989,0.2377989
+Heron Reef,Acropora,Acropora cf. aspera,Fourth Point,35.37083,0.2243901,0.2243901
+Heron Reef,Porites,Porites cf. lobata,Fourth Point,37.45471,1.9398146,1.9398146
+Heron Reef,Acropora,Acropora cf. aspera,Harry's Bommie,35.08583,0.3443931,0.3443931
+Heron Reef,Pocillopora,Pocillopora cf. damicornis,Harry's Bommie,35.39587,0.3016837,0.3016837
+Heron Reef,Porites,Porites cf. lobata,Harry's Bommie,36.79569,0.3889859,0.3889859
+Heron Reef,Pocillopora,Pocillopora cf. damicornis,Reef Crest,35.88793,0.5201799,0.5201799
+Heron Reef,Acropora,Acropora cf. aspera,Reef Crest,36.18285,0.2237975,0.2237975
+Heron Reef,Porites,Porites cf. lobata,Reef Crest,36.51258,0.3450241,0.3450241
+Heron Reef,Pocillopora,Pocillopora cf. damicornis,Reef Flat,36.06743,0.474492,0.474492
+Heron Reef,Acropora,Acropora cf. aspera,Reef Flat,36.1359,0.2640011,0.2640011
+Heron Reef,Porites,Porites cf. lobata,Reef Flat,36.31919,0.3283039,0.3283039
+Heron Reef,Pocillopora,Pocillopora cf. damicornis,Shallow Lagoon,36.80995,0.9282213,0.9282213
+Heron Reef,Porites,Porites cf. lobata,Shallow Lagoon,37.7465,3.5598836,3.5598836
+Red Sea,Stylophora,Stylophora cf. pistillata,Eliat,34.72,0.21,0.21
+Red Sea,Stylophora,Stylophora cf. pistillata,Al Wajh,36.46,0.2,0.2
+Red Sea,Stylophora,Stylophora cf. pistillata,Yanbu,36.87,,
+Red Sea,Stylophora,Stylophora cf. pistillata,Al Fahal,37.22,0.11,0.11
+Red Sea,Stylophora,Stylophora cf. pistillata,Obock,35.54,0.18,0.18
+Red Sea,Porites,Porites cf. lobata,Al Wajh,36.97,,
+Red Sea,Porites,Porites cf. lobata,Yanbu,36.5,0.25,0.25
+Red Sea,Porites,Porites cf. lobata,Al Fahal,37.33,,
+Red Sea,Porites,Porites cf. lobata,Al Qunfudhah,35.7,0.11,0.11
+Red Sea,Porites,Porites cf. lobata,Obock,37.11,,
+Red Sea,Acropora,Acropora cf. hemprichii,Eliat,37.1,0.08,0.08
+Red Sea,Acropora,Acropora cf. hemprichii,Al Wajh,37.37,,
+Red Sea,Acropora,Acropora cf. hemprichii,Yanbu,36.62,0.08,0.08
+Red Sea,Acropora,Acropora cf. hemprichii,Al Fahal,37.7,,
+Red Sea,Pocillopora,Pocillopora cf. verrucosa,Eliat,35.15,0.2,0.2
+Red Sea,Pocillopora,Pocillopora cf. verrucosa,Al Wajh,36.28,0.15,0.15
+Red Sea,Pocillopora,Pocillopora cf. verrucosa,Yanbu,35.82,,
+Red Sea,Pocillopora,Pocillopora cf. verrucosa,Al Fahal,36.05,,
+Red Sea,Pocillopora,Pocillopora cf. verrucosa,Obock,36.73,0.11,0.11
+Florida,Acropora,Acropora cervicornis,NSU,36.01,,
+Florida,Acropora,Acropora cervicornis,UM,35.76,,
+Florida,Acropora,Acropora cervicornis,CRF,36.03,,
+Florida,Acropora,Acropora cervicornis,RR,36.3,,
+Florida,Acropora,Acropora cervicornis,FWC,35.5,,
+Florida,Acropora,Acropora cervicornis,MML,35.88,,
